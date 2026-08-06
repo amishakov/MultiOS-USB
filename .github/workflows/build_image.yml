@@ -16,7 +16,10 @@ jobs:
         run: echo "ver=$(git log -1 --pretty=format:"%h")" >> "$GITHUB_ENV"
 
       - name: Linux Release
-        run: git archive --prefix=MultiOS-USB_$ver/ -o MultiOS-USB_linux_$ver.tar.gz $ver
+        run: |
+          git archive --prefix=MultiOS-USB_$ver/ -o MultiOS-USB_linux_$ver.tar $ver
+          tar --delete --wildcards -f MultiOS-USB_linux_$ver.tar '*/docs/README_image' '*/docs/README_uefi' '*/install.bat' '*/install.ps1'
+          gzip MultiOS-USB_linux_$ver.tar
 
       - name: Windows Release
         run: |
@@ -28,8 +31,14 @@ jobs:
           fallocate $tmp_imageName -l $tmp_imageSize
           dev=$(sudo losetup -f -P --show $tmp_imageName)
           echo "YeS" | sudo ./multios-usb.sh -f fat32 $dev
-          mkdir part_data && sudo mount ${dev}p2 part_data
-          (cd part_data && sudo zip -r ../files.zip *)
+          mkdir part_1 part_2
+          sudo mount ${dev}p1 part_1
+          sudo mount ${dev}p2 part_2
+          sudo rm part_2/MultiOS-USB/install.log
+          mv docs/README_uefi INSTALL.txt
+          sudo zip -r MultiOS-USB_uefi_$ver.zip part_1 part_2 INSTALL.txt install.bat install.ps1 README.md -x "part_1/grub/i386-pc/*"
+          (cd part_2 && sudo zip -r ../files.zip *)
+          sudo umount ${dev}p1
           sudo umount ${dev}p2
           sudo dd if=$dev of=$imageName bs=1M count=$imageSize
           sudo sgdisk -d 2 $imageName
@@ -37,12 +46,13 @@ jobs:
           sudo zip MultiOS-USB_windows_image_$ver.zip $imageName files.zip README.txt
 
       - name: Generate SHA256SUM
-        run: sha256sum MultiOS-USB_windows_image_*.zip MultiOS-USB_linux_*.tar.gz > sha256sums.txt
+        run: sha256sum MultiOS-USB_windows_image_*.zip MultiOS-USB_uefi_*.zip MultiOS-USB_linux_*.tar.gz > sha256sums.txt
 
       - uses: actions/upload-artifact@v7
         with:
           name: MultiOS-USB_images_${{ env.ver }}
           path: |
             MultiOS-USB_windows_image_*.zip
+            MultiOS-USB_uefi_*.zip
             MultiOS-USB_linux_*.tar.gz
             sha256sums.txt

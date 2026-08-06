@@ -14,7 +14,10 @@ jobs:
           fetch-depth: 0
 
       - name: Linux Release
-        run: git archive --prefix=MultiOS-USB_${{ github.ref_name }}/ -o MultiOS-USB_linux_${{ github.ref_name }}.tar.gz ${{ github.ref_name }}
+        run: |
+          git archive --prefix=MultiOS-USB_${{ github.ref_name }}/ -o MultiOS-USB_linux_${{ github.ref_name }}.tar ${{ github.ref_name }}
+          tar --delete --wildcards -f MultiOS-USB_linux_${{ github.ref_name }}.tar '*/docs/README_image' '*/docs/README_uefi' '*/install.bat' '*/install.ps1'
+          gzip MultiOS-USB_linux_${{ github.ref_name }}.tar
 
       - name: Windows Release
         run: |
@@ -26,8 +29,14 @@ jobs:
           fallocate $tmp_imageName -l $tmp_imageSize
           dev=$(sudo losetup -f -P --show $tmp_imageName)
           echo "YeS" | sudo ./multios-usb.sh -f fat32 $dev
-          mkdir part_data && sudo mount ${dev}p2 part_data
-          (cd part_data && sudo zip -r ../files.zip *)
+          mkdir part_1 part_2
+          sudo mount ${dev}p1 part_1
+          sudo mount ${dev}p2 part_2
+          sudo rm part_2/MultiOS-USB/install.log
+          mv docs/README_uefi INSTALL.txt
+          sudo zip -r MultiOS-USB_uefi_${{ github.ref_name }}.zip part_1 part_2 INSTALL.txt install.bat install.ps1 README.md -x "part_1/grub/i386-pc/*"
+          (cd part_2 && sudo zip -r ../files.zip *)
+          sudo umount ${dev}p1
           sudo umount ${dev}p2
           sudo dd if=$dev of=$imageName bs=1M count=$imageSize
           sudo sgdisk -d 2 $imageName
@@ -35,7 +44,7 @@ jobs:
           sudo zip MultiOS-USB_windows_image_${{ github.ref_name }}.zip $imageName files.zip README.txt
 
       - name: Generate SHA256SUM
-        run: sha256sum MultiOS-USB_windows_image_*.zip MultiOS-USB_linux_*.tar.gz > sha256sums.txt
+        run: sha256sum MultiOS-USB_windows_image_*.zip MultiOS-USB_uefi_*.zip MultiOS-USB_linux_*.tar.gz > sha256sums.txt
 
       - name: Release
         env:
@@ -52,4 +61,4 @@ jobs:
             --verify-tag \
             --latest \
             --notes-file notes.txt \
-            MultiOS-USB_windows_image_*.zip MultiOS-USB_linux_*.tar.gz sha256sums.txt
+            MultiOS-USB_windows_image_*.zip MultiOS-USB_uefi_*.zip MultiOS-USB_linux_*.tar.gz sha256sums.txt

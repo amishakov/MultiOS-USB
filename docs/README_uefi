@@ -1,0 +1,31 @@
+Download the UEFI archive and extract it to the disk.
+
+You can perform the installation in one of the following ways:
+
+- Using the attached .bat file — simply double-click it
+
+- Using the included PowerShell installer:
+
+	1. Open PowerShell as Administrator.
+	2. Navigate to the folder where the downloaded file is located:
+
+		cd "C:\Path\To\Folder"
+
+	3. Run the script:
+
+		powershell -ExecutionPolicy Bypass -File .\install.ps1
+
+		or for PowerShell 7:
+
+		pwsh -ExecutionPolicy Bypass -File .\install.ps1
+
+	If prompted by Windows, confirm that you want to run the script.
+
+- Manually create partitions (for advanced users):
+
+	1. Create the partitions (Microsoft basic data) on a GPT-formatted disk (MBR may work, but it has not been tested):
+
+		Partition 1: Name: MultiOS-EFI, File System: FAT, Size: 25 MB, Attribute flags: 0x8000000000000001
+		Partition 2: Name: MultiOS-USB, File System: exFAT, Size: as large as you want
+
+	2. Copy the contents of the attached folders to the corresponding partitions.

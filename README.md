@@ -70,7 +70,7 @@ makepkg -si
 
 **From GitHub - Linux console**
 
-Go to [Releases](https://github.com/Mexit/MultiOS-USB/releases), download the latest version and unpack the downloaded archive.
+Go to [Releases](../../releases/latest), download and unpack the downloaded archive.
 
 Check and install the required packages (in most cases they should be installed by default):
 - tar, bzip2, xz
@@ -91,10 +91,13 @@ For example:
 sudo ./multios-usb.sh /dev/sdX
 ```
 
-**From GitHub - image based installation (experimental)**
+**From GitHub - PowerShell installer or manual installation (UEFI only)**
 
-Recommended installation method for Windows. Go to [Releases](https://github.com/Mexit/MultiOS-USB/releases) and download the appropriate file.  
-Installation details can be found [here](docs/README_image) and in the downloaded archive.
+Recommended installation method for Windows. Installation details can be found [here](docs/README_uefi) and in the downloaded [archive](../../releases/latest).
+
+**From GitHub - Windows: image based installation (BIOS + UEFI - experimental)**
+
+Required external tools. Installation details can be found [here](docs/README_image) and in the downloaded [archive](../../releases/latest).
 
 ## First use
 
