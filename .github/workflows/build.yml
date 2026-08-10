@@ -1,9 +1,12 @@
-name: Release
+name: Artifacts or Release
 
 on:
   push:
+    branches:
+      - '**'
     tags:
       - 'v*'
+  pull_request:
 
 jobs:
   build_image:
@@ -13,11 +16,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "ver=${{ github.ref_name }}" >> "$GITHUB_ENV"
+          else
+            echo "ver=$(git log -1 --pretty=format:'%h')" >> "$GITHUB_ENV"
+          fi
+
       - name: Linux Release
         run: |
-          git archive --prefix=MultiOS-USB_${{ github.ref_name }}/ -o MultiOS-USB_linux_${{ github.ref_name }}.tar ${{ github.ref_name }}
-          tar --delete --wildcards -f MultiOS-USB_linux_${{ github.ref_name }}.tar '*/docs/README_image' '*/docs/README_uefi' '*/install.bat' '*/install.ps1'
-          gzip MultiOS-USB_linux_${{ github.ref_name }}.tar
+          git archive --prefix=MultiOS-USB_$ver/ -o MultiOS-USB_linux_$ver.tar $ver
+          tar --delete --wildcards -f MultiOS-USB_linux_$ver.tar '*/docs/README_image' '*/docs/README_uefi' '*/install.bat' '*/install.ps1'
+          gzip MultiOS-USB_linux_$ver.tar
 
       - name: Windows Release
         run: |
@@ -34,19 +45,31 @@ jobs:
           sudo mount ${dev}p2 part_2
           sudo rm part_2/MultiOS-USB/install.log
           mv docs/README_uefi INSTALL.txt
-          sudo zip -r MultiOS-USB_uefi_${{ github.ref_name }}.zip part_1 part_2 INSTALL.txt install.bat install.ps1 README.md -x "part_1/grub/i386-pc/*"
+          sudo zip -r MultiOS-USB_uefi_$ver.zip part_1 part_2 INSTALL.txt install.bat install.ps1 README.md -x "part_1/grub/i386-pc/*"
           (cd part_2 && sudo zip -r ../files.zip *)
           sudo umount ${dev}p1
           sudo umount ${dev}p2
           sudo dd if=$dev of=$imageName bs=1M count=$imageSize
           sudo sgdisk -d 2 $imageName
           mv docs/README_image README.txt
-          sudo zip MultiOS-USB_windows_image_${{ github.ref_name }}.zip $imageName files.zip README.txt
+          sudo zip MultiOS-USB_windows_image_$ver.zip $imageName files.zip README.txt
 
       - name: Generate SHA256SUM
         run: sha256sum MultiOS-USB_windows_image_*.zip MultiOS-USB_uefi_*.zip MultiOS-USB_linux_*.tar.gz > sha256sums.txt
 
+      - name: Upload artifacts
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v7
+        with:
+          name: MultiOS-USB_images_${{ env.ver }}
+          path: |
+            MultiOS-USB_windows_image_*.zip
+            MultiOS-USB_uefi_*.zip
+            MultiOS-USB_linux_*.tar.gz
+            sha256sums.txt
+
       - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
